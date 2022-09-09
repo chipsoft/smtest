@@ -1,3 +1,4 @@
+//https://wiki.seeedstudio.com/Wio-Terminal-FS-ReadWrite/
 #[derive(Debug, PartialEq)]
 enum State {
     Waiting { waiting_time: usize },
@@ -14,10 +15,17 @@ enum Event {
     BottleEjected,
 }
 
+struct SM {
+    state: State,
+}
 
-impl State {
+impl SM {
+    pub fn new(state: State) -> Self {
+        SM {state}
+    }
+
     fn next(self, event: Event) -> State {
-        match (self, event) {
+        match (self.state, event) {
             (State::Waiting { waiting_time }, Event::NothingHappend) => {
                 State::Waiting { waiting_time: waiting_time + 1 }
             }
@@ -31,7 +39,7 @@ impl State {
         }
     }
     fn run(&self) {
-        match *self {
+        match self.state {
             State::Waiting { waiting_time } => {
                 println!("We waited for {}", waiting_time);
             }
@@ -42,10 +50,11 @@ impl State {
             State::Failure(_) => {}
         }
     }
+
 }
 
 fn main() {
-    let mut state = State::Waiting { waiting_time: 0 };
+    // let mut state = State::Waiting { waiting_time: 0 };
 
     // Sequence of events (might be dynamical based on what State::run did)
     let events = [Event::NothingHappend,
@@ -57,20 +66,23 @@ fn main() {
                   Event::BottleFull];
     let mut iter = events.iter();
 
+    let mut sm = SM::new(State::Waiting { waiting_time: 0 });
+
     loop {
         // just a hack to get owned values, because I used an iterator
         let event = iter.next().unwrap().clone();
-        print!("__ Transition from {:?}", state);
-        state = state.next(event);
-        println!(" to {:?}", state);
+        print!("__ Transition from {:?}", sm.state);
+        sm = SM {state: sm.next(event)};
+        // state = state.next(event);
+        println!(" to {:?}", sm.state);
 
-        if let State::Failure(string) = state {
+        if let State::Failure(string) = sm.state {
             println!("{}", string);
             break;
         } else {
             // You might want to do somethin while in a state
             // You could also add State::enter() and State::exit()
-            state.run();
+            sm.run();
         }
     }
 
